@@ -10,3 +10,5 @@ torchvision
 torchaudio
 python-dotenv
 safetensors
+pydantic-settings
+sentence-transformers
