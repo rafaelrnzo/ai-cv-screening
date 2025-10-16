@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+httpx
+pydantic
+redis
+numpy
+sentence-transformers
+torch
+torchvision
+torchaudio
+python-dotenv
+safetensors
