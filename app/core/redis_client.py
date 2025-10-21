@@ -1,45 +1,86 @@
+from typing import Optional, List, Dict, Any
+import time
 import redis
-import numpy as np
-from typing import List, Dict, Any
+from redis.commands.search.field import TextField, TagField, VectorField
+from redis.commands.search.query import Query
+
 from app.core.config import settings
-from app.core.embedding_client import get_embed_model
+from app.core.embedding_client import EMBED_DIM, embed_texts, f32
 
-_redis = None
+r = redis.from_url(settings.REDIS_URL, decode_responses=False)
 
-def get_redis() -> redis.Redis:
-    global _redis
-    if _redis is None:
-        _redis = redis.from_url(settings.REDIS_URL)
-    return _redis
+def _set_dialect2():
+    try:
+        r.execute_command("FT.CONFIG", "SET", "DEFAULT_DIALECT", "2")
+    except Exception:
+        pass
 
-def search_similar_context(query_text: str, top_k: int = 3) -> List[Dict[str, Any]]:
-    if not query_text:
-        return []
+def ensure_index(force: bool = False) -> bool:
+    created = False
+    try:
+        if not force:
+            r.ft(settings.INDEX_NAME).info()
+            _set_dialect2()
+            return False
+    except Exception:
+        pass
 
-    r = get_redis()
-    model = get_embed_model()
-    vec = model.encode(query_text, normalize_embeddings=True).astype(np.float32).tobytes()
+    if force:
+        try:
+            r.ft(settings.INDEX_NAME).dropindex(delete_documents=False)
+        except Exception:
+            pass
 
-    base = f"*=>[KNN {top_k} @embedding $vec AS score]"
-    res = r.execute_command(
-        "FT.SEARCH", settings.INDEX_NAME, base,
-        "PARAMS", "2", "vec", vec,
-        "RETURN", "4", "name", "subject", "user_stories", "score",
-        "SORTBY", "score",
-        "DIALECT", "2"
+    schema = (
+        TextField("title"),
+        TextField("text"),
+        TagField("doc_type"),
+        VectorField(
+            "embedding",
+            "HNSW",
+            {"TYPE": "FLOAT32", "DIM": EMBED_DIM, "DISTANCE_METRIC": "COSINE"},
+        ),
+    )
+    r.ft(settings.INDEX_NAME).create_index(schema)
+    _set_dialect2()
+    created = True
+    return created
+
+try:
+    ensure_index()
+except Exception:
+    pass
+
+def knn_search(query: str, k: int = 3, types: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    try:
+        r.ft(settings.INDEX_NAME).info()
+    except Exception:
+        ensure_index()
+
+    qvec = embed_texts([query])[0]
+    if types:
+        tags = "|".join(types)
+        base = f"(@doc_type:{{{tags}}})=>[KNN {k} @embedding $vec AS score]"
+    else:
+        base = f"*=>[KNN {k} @embedding $vec AS score]"
+
+    q = (
+        Query(base)
+        .return_fields("title", "text", "doc_type", "score")
+        .sort_by("score")
+        .dialect(2)
     )
 
-    out = []
-    if isinstance(res, list) and len(res) >= 3:
-        for i in range(1, len(res), 2):
-            fields = res[i+1]
-            def _get(k):
-                v = fields.get(k.encode()) if isinstance(fields, dict) else None
-                return v.decode("utf-8", "ignore") if isinstance(v, bytes) else (v or "")
-            out.append({
-                "name": _get("name"),
-                "subject": _get("subject"),
-                "user_stories": _get("user_stories"),
-                "score": float(_get("score") or 0.0),
-            })
-    return out
+    for attempt in range(2):
+        try:
+            res = r.ft(settings.INDEX_NAME).search(q, query_params={"vec": f32(qvec)})
+            return [
+                {"title": d.title, "text": d.text, "doc_type": d.doc_type, "score": float(d.score)}
+                for d in res.docs
+            ]
+        except redis.ResponseError as e:
+            if "No such index" in str(e) and attempt == 0:
+                ensure_index(force=False)
+                time.sleep(0.2)
+                continue
+            raise

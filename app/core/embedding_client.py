@@ -1,9 +1,15 @@
+import array
+from typing import List
 from sentence_transformers import SentenceTransformer
+from app.core.config import settings
 
-_embed_model = None
+embedder = SentenceTransformer(settings.EMBEDDING_MODEL)
+EMBED_DIM: int = embedder.get_sentence_embedding_dimension()
 
-def get_embed_model() -> SentenceTransformer:
-    global _embed_model
-    if _embed_model is None:
-        _embed_model = SentenceTransformer("BAAI/bge-m3")
-    return _embed_model
+def embed_texts(texts: List[str]) -> List[List[float]]:
+    emb = embedder.encode(texts, normalize_embeddings=True)
+    return emb.tolist()
+
+def f32(v: List[float]) -> bytes:
+    arr = array.array("f", v)
+    return arr.tobytes()

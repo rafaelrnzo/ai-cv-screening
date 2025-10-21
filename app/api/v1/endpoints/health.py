@@ -1,15 +1,14 @@
-from fastapi import APIRouter, HTTPException, status 
+from fastapi import APIRouter
 from app.core.config import settings
 
-router = APIRouter(prefix="/health", tags=["Health"])
+router = APIRouter()
 
-@router.get("/")
-def health_check():
+@router.get("/health")
+def health():
     return {
+        "ok": True,
         "app": settings.APP_NAME,
-        "api_version": settings.API_V1_STR,
-        "status": "ok",
-        "version": "1.0.0",
-        "redis": "connected",
-        "model": "loaded"
+        "llm_model": settings.GEMINI_MODEL,
+        "embed_model": settings.EMBEDDING_MODEL,
+        "index": settings.INDEX_NAME,
     }

@@ -1,31 +1,25 @@
-from typing import List, Union, ClassVar
-from pydantic import BaseModel, field_validator
+from typing import List, Union
 from pydantic_settings import BaseSettings
-
+from pydantic import field_validator
 
 class Settings(BaseSettings):
-    APP_NAME: str = "AI Microservice"
+    APP_NAME: str = "AI Screening Service"
     API_V1_STR: str = "/api/v1"
     SERVER_HOST: str = "0.0.0.0"
     SERVER_PORT: int = 8004
 
-    MODEL_CTX_WINDOW: int = 8192
-    SAFETY_BUFFER: int = 512
-    HARD_CAP_MAX_NEW: int = 1024
+    GOOGLE_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    EMBEDDING_MODEL: str = "BAAI/bge-m3"
 
-    MAX_CHARS_TEMPLATE: ClassVar[int] = 6000
-    MAX_CHARS_CONTEXT: ClassVar[int] = 12000
+    REDIS_URL: str = "redis://0.0.0.0:6379/0"
+    INDEX_NAME: str = "gt_idx"
+    DOC_PREFIX: str = "gt:"
 
-    INDEX_NAME: str = "ac_index"
-    REDIS_URL: str = "redis://192.168.100.136:6379"
-
-    VLLM_URL: str = "http://192.168.100.136:8006/v1"
-    VLLM_MODEL: str = "gemma4b-4bit"
-    VLLM_EMBEDDING: str = "gemma4b-4bit"
-    SAFETENSOR_EMBEDDING: str = "BAAI/bge-m3"
+    UPLOAD_DIR: str = "./data/uploads"
+    GROUND_DIR: str = "./data/ground_truth"
 
     BACKEND_CORS_ORIGINS: List[str] = []
-    VLLM_MAX_CONCURRENT_REQUESTS: int = 10
 
     class Config:
         case_sensitive = True
@@ -34,10 +28,9 @@ class Settings(BaseSettings):
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+    def assemble_cors(cls, v: Union[str, List[str]]) -> List[str]:
         if isinstance(v, str):
             return [i.strip() for i in v.split(",")] if v else []
         return v
-
 
 settings = Settings()
