@@ -1,4 +1,4 @@
-# 🧠 AI Screening Service
+# 🧠 AI CV Evaluator
 ## Overview
 The **AI Screening Service** is a backend application built with **FastAPI**, designed to automatically evaluate candidate CVs and project reports based on job descriptions and rubrics.  
 It combines **Google Gemini**, **BGE-M3 embeddings**, and **Redis Vector Search (RediSearch)** to implement an intelligent RAG (Retrieval-Augmented Generation) pipeline for candidate evaluation.
@@ -222,12 +222,3 @@ Backend Engineer | AI Developer | Fullstack Engineer
 💼 [GitHub](https://github.com/rafaelrnzo)
 
 ---
-
-## 📄 License
-
-MIT License © 2025 Rafael Lorenzo
-
-```
-
-Langsung copy seluruh blok di atas ke file `README.md` kamu, dan hasilnya akan terformat dengan rapi di GitHub ✨
-```
