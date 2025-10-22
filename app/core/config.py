@@ -2,6 +2,7 @@ from typing import List, Union
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
 
+
 class Settings(BaseSettings):
     APP_NAME: str = "AI Screening Service"
     API_V1_STR: str = "/api/v1"
@@ -12,9 +13,18 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-2.5-flash"
     EMBEDDING_MODEL: str = "BAAI/bge-m3"
 
-    REDIS_URL: str = "redis://0.0.0.0:6379/0"
+    REDIS_URL: str = "redis://redis-stack:6379/0"
     INDEX_NAME: str = "gt_idx"
     DOC_PREFIX: str = "gt:"
+
+    POSTGRES_USER: str = "admin"
+    POSTGRES_PASSWORD: str = "admin.admin"
+    POSTGRES_DB: str = "ai_screening"
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    DATABASE_URL: str = (
+        "postgresql+psycopg2://admin:admin.admin@postgres:5432/ai_screening"
+    )
 
     UPLOAD_DIR: str = "./data/uploads"
     GROUND_DIR: str = "./data/ground_truth"
@@ -32,5 +42,6 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return [i.strip() for i in v.split(",")] if v else []
         return v
+
 
 settings = Settings()
