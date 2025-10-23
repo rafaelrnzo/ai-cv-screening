@@ -229,14 +229,11 @@ flowchart TD
 
 * [ ] **OCR-based CV parsing** — Integrate `pytesseract` + `pdf2image` for scanned resumes
 * [ ] **LoRA fine-tuning** — Improve response precision on custom job rubrics
-* [ ] **Celery / Redis Queue** — True distributed job orchestration
 * [ ] **Retry & fallback pipeline** — Backoff logic for Gemini timeouts or rate limits
 * [ ] **Analytics dashboard** — View candidate scores, rubric trends, and reports
 * [ ] **Caching layer** — Reuse embeddings for identical CVs or projects
 * [ ] **Unit tests & CI/CD integration**
 * [ ] **PDF parsing fallback** — Combine `pypdf` + OCR for maximum text recovery
-* [ ] **Sentry / ELK integration** — Centralized error monitoring
-
 ---
 
 ## 👨‍💻 Author
