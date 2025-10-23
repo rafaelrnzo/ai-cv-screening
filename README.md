@@ -197,22 +197,6 @@ GET /api/v1/evaluate/result/<job_id>
 → returns match_rate, project_score, overall_summary
 ```
 
----
-
-## 🧠 Evaluation Pipeline Flow
-
-```mermaid
-flowchart TD
-  A[Upload CV & Report] --> B[Extract & Embed Documents]
-  B --> C[Retrieve Context via RAG (Redis Vector Search)]
-  C --> D[LLM Evaluation (Gemini 2.5 Flash)]
-  D --> E[Aggregate Scores & Feedback]
-  E --> F[Store Result in Postgres]
-  F --> G[Return Job ID + Async Result Endpoint]
-```
-
----
-
 ## 🧩 Technologies
 
 | Layer       | Tech                     |
