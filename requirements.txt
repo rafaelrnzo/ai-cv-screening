@@ -12,3 +12,7 @@ python-dotenv
 safetensors
 pydantic-settings
 sentence-transformers
+google-generativeai
+sqlalchemy
+psycopg2-binary
+python-multipart
