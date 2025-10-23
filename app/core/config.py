@@ -1,4 +1,5 @@
-from typing import List, Union
+from typing import List, Union, Optional
+import os
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
 
@@ -13,7 +14,7 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-2.5-flash"
     EMBEDDING_MODEL: str = "BAAI/bge-m3"
 
-    REDIS_URL: str = "redis://redis-stack:6379/0"
+    REDIS_URL: str = "redis://localhost:6379/0"
     INDEX_NAME: str = "gt_idx"
     DOC_PREFIX: str = "gt:"
 
@@ -22,9 +23,8 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "ai_screening"
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
-    DATABASE_URL: str = (
-        "postgresql+psycopg2://admin:admin.admin@postgres:5432/ai_screening"
-    )
+
+    DATABASE_URL: Optional[str] = None
 
     UPLOAD_DIR: str = "./data/uploads"
     GROUND_DIR: str = "./data/ground_truth"
@@ -38,10 +38,31 @@ class Settings(BaseSettings):
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
-    def assemble_cors(cls, v: Union[str, List[str]]) -> List[str]:
-        if isinstance(v, str):
-            return [i.strip() for i in v.split(",")] if v else []
-        return v
+    def parse_cors(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, list):
+            return v
+        if not v:
+            return []
+        v = v.strip()
+        if v.startswith("["):
+            import json
+            try:
+                parsed = json.loads(v)
+                return [s.strip() for s in parsed]
+            except Exception:
+                pass
+        return [s.strip() for s in v.split(",") if s.strip()]
+
+    @property
+    def SQLALCHEMY_DATABASE_URI(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
+        user = os.getenv("POSTGRES_USER", self.POSTGRES_USER)
+        pwd = os.getenv("POSTGRES_PASSWORD", self.POSTGRES_PASSWORD)
+        db = os.getenv("POSTGRES_DB", self.POSTGRES_DB)
+        host = os.getenv("POSTGRES_HOST", self.POSTGRES_HOST)
+        port = os.getenv("POSTGRES_PORT", str(self.POSTGRES_PORT))
+        return f"postgresql+psycopg2://{user}:{pwd}@{host}:{port}/{db}"
 
 
 settings = Settings()

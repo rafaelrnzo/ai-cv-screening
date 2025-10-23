@@ -16,3 +16,4 @@ google-generativeai
 sqlalchemy
 psycopg2-binary
 python-multipart
+pypdf

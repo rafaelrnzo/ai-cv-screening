@@ -1,4 +1,4 @@
-version: "3.9"
+version: "3.8"
 
 services:
   ai-screening-api:
@@ -8,16 +8,34 @@ services:
     container_name: ai-screening-api
     restart: always
     depends_on:
-      - postgres
-      - redis-stack
+      postgres:
+        condition: service_healthy
+      redis-stack:
+        condition: service_healthy
     env_file: .env
+    environment:
+      # Override untuk runtime di Docker (jangan pakai localhost)
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ai_screening
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin.admin
+      DATABASE_URL: postgresql+psycopg2://admin:admin.admin@postgres:5432/ai_screening
+
+      REDIS_URL: redis://redis-stack:6379/0
+
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: "8004"
     ports:
       - "8004:8004"
     volumes:
       - .:/app
       - ./data/uploads:/app/data/uploads
-    command: >
-      uvicorn app.main:app --host 0.0.0.0 --port 8004 --reload
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8004/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     networks:
       - ai_net
 
@@ -29,10 +47,15 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin.admin
       POSTGRES_DB: ai_screening
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d ai_screening -h localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     networks:
       - ai_net
 
@@ -40,18 +63,18 @@ services:
     image: redis/redis-stack:latest
     container_name: redis-stack
     restart: always
+    ports:
+      - "6379:6379"
+      - "8001:8001"
     environment:
       - REDIS_ARGS=--appendonly yes --save 60 1
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
-      - "8001:8001"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
     networks:
       - ai_net
 

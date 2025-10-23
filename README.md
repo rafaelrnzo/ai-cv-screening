@@ -1,85 +1,97 @@
-# 🧠 AI CV Evaluator
+# 🧠 AI Screening Service (RAG-Powered Candidate Evaluator)
 ## Overview
-The **AI Screening Service** is a backend application built with **FastAPI**, designed to automatically evaluate candidate CVs and project reports based on job descriptions and rubrics.  
-It combines **Google Gemini**, **BGE-M3 embeddings**, and **Redis Vector Search (RediSearch)** to implement an intelligent RAG (Retrieval-Augmented Generation) pipeline for candidate evaluation.
+The **AI Screening Service** is a backend application built with **FastAPI**, designed to automatically evaluate candidate CVs and project reports based on predefined job descriptions and rubrics.  
+It combines **Google Gemini 2.5 Flash**, **BAAI/bge-m3 embeddings**, and **Redis Vector Search (RediSearch)** to deliver a robust, contextual **RAG (Retrieval-Augmented Generation)** pipeline that performs accurate candidate evaluation at scale.
 
 This project supports:
-- Asynchronous evaluation jobs
+- Asynchronous job orchestration
 - Document embedding and semantic search
-- Configurable environment variables
 - Modular, production-ready FastAPI structure
+- Configurable environment variables
+- Portable deployment via Docker Compose
+
+---
 
 ## 🏗️ Architecture
-````markdown
+```markdown
 app/
  ├── api/
- │   ├── schemas/            # Pydantic models
+ │   ├── schemas/            # Pydantic models for requests/responses
  │   ├── v1/
- │   │   ├── endpoints/      # FastAPI routers
+ │   │   ├── endpoints/      # FastAPI route handlers
  │   │   └── routers.py
- │   └── handlers/           # (optional future LLM inference)
+ │   └── handlers/           # Optional LLM orchestration layer
  ├── core/
- │   ├── config.py           # Environment & settings
+ │   ├── config.py           # Pydantic settings + .env loader
  │   ├── embedding_client.py # SentenceTransformer client
- │   ├── llm_client.py       # Gemini API client
- │   ├── redis_client.py     # Redis / RediSearch utilities
+ │   ├── llm_client.py       # Gemini API wrapper
+ │   ├── redis_client.py     # Redis & RediSearch connection utilities
  ├── services/
- │   ├── ingest_service.py   # Seeding and indexing documents
- │   ├── pipeline_service.py # AI evaluation pipeline
- │   └── search_service.py   # Context retrieval
+ │   ├── ingest_service.py   # Seeding & indexing ground truth docs
+ │   ├── pipeline_service.py # Main AI evaluation orchestration
+ │   └── search_service.py   # RAG context retrieval logic
  ├── utils/
- │   ├── file_io.py          # File handling helpers
- │   └── logger.py           # (future logging utilities)
- ├── main.py                 # App entrypoint
- ├── tests/                  # Unit tests (future)
- └── infra/                  # Infra-related configs
+ │   ├── file_io.py          # File reading + PDF parsing (pypdf)
+ │   └── logger.py           # Logging utilities
+ ├── main.py                 # FastAPI entrypoint
+ ├── tests/                  # (Planned) Unit & integration tests
+ └── infra/                  # Dockerfile, compose, and scripts
 ````
 
 ---
 
-## ⚙️ Features
+## ⚙️ Core Features
 
-* **Gemini 2.5 Flash**: Evaluates CVs and projects with structured JSON output.
-* **BGE-M3 Embeddings**: Semantic search for contextual RAG retrieval.
-* **Redis Stack (RediSearch)**: Vector database for job/rubric retrieval.
-* **Async Job Queue**: Background task evaluation using FastAPI’s `BackgroundTasks`.
-* **Modular Services**: Clean separation between config, embedding, LLM, and pipeline layers.
+* **Google Gemini 2.5 Flash** – Generates structured evaluation JSON with high linguistic precision
+* **BAAI/bge-m3 embeddings** – Efficient multilingual semantic retrieval
+* **Redis Stack (RediSearch)** – Vector storage for millisecond-level lookup
+* **Async background jobs** – Handles long-running evaluation requests cleanly
+* **PostgreSQL persistence** – Tracks evaluations and logs for future audits
+* **Modular architecture** – Each layer is isolated, testable, and maintainable
 
 ---
 
 ## 🚀 Getting Started
 
-### 1. Clone the repository
+You can run the service in **two modes**:
+* **A. Local Python (for dev & debugging)**
+* **B. Docker Compose (recommended for deployment)**
+
+---
+
+### 🧩 A. Local Setup (Python / venv)
+
+#### 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/ai-screening-service.git
+git clone https://github.com/rafaelrnzo/ai-screening-service.git
 cd ai-screening-service
 ```
 
-### 2. Create virtual environment
+#### 2. Create virtual environment
 
 ```bash
-python -m venv venv
-source venv/bin/activate   # on macOS/Linux
-venv\Scripts\activate      # on Windows
+python -m venv envAI
+source envAI/bin/activate        # macOS/Linux
+envAI\Scripts\activate           # Windows
 ```
 
-### 3. Install dependencies
+#### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configure environment variables
+#### 4. Configure environment variables
 
-Create a `.env` file at the project root:
+Create a `.env` file at project root:
 
 ```env
 APP_NAME=AI Screening Service
 SERVER_HOST=0.0.0.0
 SERVER_PORT=8004
 
-GOOGLE_API_KEY=YOUR_KEY_HERE
+GOOGLE_API_KEY=YOUR_KEY
 GEMINI_MODEL=gemini-2.5-flash
 EMBEDDING_MODEL=BAAI/bge-m3
 
@@ -87,15 +99,20 @@ REDIS_URL=redis://localhost:6379/0
 INDEX_NAME=gt_idx
 DOC_PREFIX=gt:
 
+POSTGRES_USER=admin
+POSTGRES_PASSWORD=admin.admin
+POSTGRES_DB=ai_screening
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+DATABASE_URL=postgresql+psycopg2://admin:admin.admin@localhost:5432/ai_screening
+
 UPLOAD_DIR=./data/uploads
 GROUND_DIR=./data/ground_truth
 
-BACKEND_CORS_ORIGINS=http://localhost:3000
+BACKEND_CORS_ORIGINS=["http://localhost:3000","http://127.0.0.1:5173"]
 ```
 
-### 5. Start Redis Stack
-
-Use Docker (recommended):
+#### 5. Start Redis Stack
 
 ```bash
 docker run -d \
@@ -105,23 +122,42 @@ docker run -d \
   redis/redis-stack:7.4.0-v1
 ```
 
-Check module:
-
-```bash
-redis-cli -u redis://localhost:6379 MODULE LIST
-# Must include "search"
-```
-
-### 6. Run the FastAPI app
-
-```bash
-python -m app.main
-```
-
-Or with **Uvicorn** directly:
+#### 6. Run the app
 
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8004
+```
+
+Visit [http://localhost:8004/docs](http://localhost:8004/docs)
+
+---
+
+### 🐳 B. Setup via Docker Compose (Recommended)
+
+This mode runs **FastAPI**, **Postgres**, and **Redis Stack** together with a single command.
+
+#### 1. Verify infra files
+
+```
+infra/docker/Dockerfile
+docker-compose.yml
+.env
+```
+
+#### 2. Build & start services
+
+```bash
+docker compose build
+docker compose up -d
+docker compose logs -f ai-screening-api
+```
+
+Access API → [http://localhost:8004/docs](http://localhost:8004/docs)
+
+#### 3. Stop & clean
+
+```bash
+docker compose down -v
 ```
 
 ---
@@ -139,86 +175,74 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8004
 
 ## 📘 Example Workflow
 
-1. **Upload candidate files**
+```bash
+# 1️⃣ Upload candidate files
+POST /api/v1/evaluate/upload
+→ returns cv_id, report_id
 
-   ```bash
-   POST /api/v1/evaluate/upload
-   ```
+# 2️⃣ Start evaluation
+POST /api/v1/evaluate
+{
+  "job_title": "Backend Engineer",
+  "cv_id": "<uuid>",
+  "report_id": "<uuid>"
+}
+→ returns job_id
 
-   → returns `cv_id` and `report_id`
-
-2. **Start evaluation**
-
-   ```bash
-   POST /api/v1/evaluate
-   {
-     "job_title": "Backend Engineer",
-     "cv_id": "<uuid>",
-     "report_id": "<uuid>"
-   }
-   ```
-
-   → returns `job_id`
-
-3. **Check result**
-
-   ```bash
-   GET /api/v1/evaluate/result/<job_id>
-   ```
-
-   → returns match rate, scores, and summary JSON.
+# 3️⃣ Check results
+GET /api/v1/evaluate/result/<job_id>
+→ returns match_rate, project_score, overall_summary
+```
 
 ---
 
-## 🧩 Technologies Used
+## 🧠 Evaluation Pipeline Flow
 
-| Category          | Tech                               |
-| ----------------- | ---------------------------------- |
-| Backend Framework | FastAPI                            |
-| Vector DB         | Redis Stack (RediSearch)           |
-| Embedding         | SentenceTransformers (BAAI/bge-m3) |
-| LLM               | Google Gemini 2.5 Flash            |
-| Config Management | Pydantic Settings                  |
-| Environment       | Python 3.11+                       |
-
----
-
-## 🧠 Evaluation Logic
-
-* **RAG Retrieval:** Finds top relevant documents (job description, rubric, etc.) using cosine similarity.
-* **Gemini Scoring:**
-
-  * Evaluates CV against rubric → `cv_match_rate`, `cv_feedback`
-  * Evaluates Project against rubric → `project_score`, `project_feedback`
-  * Combines both → `overall_summary`
+```mermaid
+flowchart TD
+  A[Upload CV & Report] --> B[Extract & Embed Documents]
+  B --> C[Retrieve Context via RAG (Redis Vector Search)]
+  C --> D[LLM Evaluation (Gemini 2.5 Flash)]
+  D --> E[Aggregate Scores & Feedback]
+  E --> F[Store Result in Postgres]
+  F --> G[Return Job ID + Async Result Endpoint]
+```
 
 ---
 
-## 🧰 Folder Conventions
+## 🧩 Technologies
 
-* `core/` → Low-level clients (Redis, Gemini, Embeddings)
-* `services/` → Business logic (RAG, ingestion, evaluation)
-* `api/` → Routes, schemas, request handling
-* `utils/` → Helper functions
-* `infra/` → Docker and infrastructure configs
+| Layer       | Tech                     |
+| ----------- | ------------------------ |
+| Framework   | FastAPI                  |
+| Vector DB   | Redis Stack (RediSearch) |
+| Embeddings  | BAAI/bge-m3              |
+| LLM         | Google Gemini 2.5 Flash  |
+| Persistence | PostgreSQL               |
+| Config      | Pydantic Settings        |
+| Environment | Python 3.11+             |
+| Deployment  | Docker & Docker Compose  |
 
 ---
 
 ## 🧪 Future Improvements
 
-* [ ] Add PDF text extraction (e.g., `pypdf`)
-* [ ] Integrate Celery / Redis Queue for scalable jobs
-* [ ] Add unit & integration tests
-* [ ] Add frontend dashboard for evaluation results
-* [ ] Add caching and pagination for uploaded documents
+* [ ] **OCR-based CV parsing** — Integrate `pytesseract` + `pdf2image` for scanned resumes
+* [ ] **LoRA fine-tuning** — Improve response precision on custom job rubrics
+* [ ] **Celery / Redis Queue** — True distributed job orchestration
+* [ ] **Retry & fallback pipeline** — Backoff logic for Gemini timeouts or rate limits
+* [ ] **Analytics dashboard** — View candidate scores, rubric trends, and reports
+* [ ] **Caching layer** — Reuse embeddings for identical CVs or projects
+* [ ] **Unit tests & CI/CD integration**
+* [ ] **PDF parsing fallback** — Combine `pypdf` + OCR for maximum text recovery
+* [ ] **Sentry / ELK integration** — Centralized error monitoring
 
 ---
 
-## 🧑‍💻 Author
+## 👨‍💻 Author
 
 **Rafael Lorenzo**
-Backend Engineer | AI Developer | Fullstack Engineer
-🔗 [rafaelrnzo.vercel.app](https://rafaelrnzo.vercel.app)
-💼 [GitHub](https://github.com/rafaelrnzo)
+Backend Engineer | AI Engineer | Fullstack Developer
 
----
+🌐 [rafaelrnzo.vercel.app](https://rafaelrnzo.vercel.app)
+💼 [github.com/rafaelrnzo](https://github.com/rafaelrnzo)
